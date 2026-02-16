@@ -45,12 +45,12 @@ NordVPN doesn't officially provide WireGuard configuration files. Their **NordLy
 ### Option 1: Download directly
 ```powershell
 # Download the script
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/YOUR_USERNAME/nordvpn-wireguard-generator/main/NordVPN-WireGuard-Generator.ps1" -OutFile "NordVPN-WireGuard-Generator.ps1"
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/merlini0s/nordvpn-wireguard-generator/main/NordVPN-WireGuard-Generator.ps1" -OutFile "NordVPN-WireGuard-Generator.ps1"
 ```
 
 ### Option 2: Clone the repository
 ```bash
-git clone https://github.com/YOUR_USERNAME/nordvpn-wireguard-generator.git
+git clone https://github.com/merlini0s/nordvpn-wireguard-generator.git
 cd nordvpn-wireguard-generator
 ```
 
