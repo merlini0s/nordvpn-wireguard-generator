@@ -34,7 +34,7 @@ NordVPN doesn't officially provide WireGuard configuration files. Their **NordLy
 ## 🔑 Getting Your Access Token
 
 1. Go to [NordVPN Manual Configuration](https://my.nordaccount.com/dashboard/nordvpn/manual-configuration/)
-2. Click **"Set up NordVPN Manually"**
+2. Click **"Get Access Token"**
 3. Verify your identity if prompted
 4. Click **"Generate new token"**
 5. Select **"Get service credentials"** permission
