@@ -7,7 +7,8 @@
     that can be used on routers and other devices that support WireGuard.
     
     Features:
-    - Select country first
+    - Select server type (Standard, P2P, Double VPN, etc.)
+    - Select country
     - View all servers with load metrics
     - Choose specific servers or auto-select best ones
 
@@ -18,7 +19,8 @@
     .\NordVPN-WireGuard-Generator.ps1
     
 .NOTES
-    Author: GitHub Community
+    Author: merlini0s
+    GitHub: https://github.com/merlini0s/nordvpn-wireguard-generator
     Requires: Windows PowerShell 5.1+ or PowerShell Core 7+
 #>
 
@@ -44,6 +46,8 @@ function Write-Banner {
     
 "@
     Write-Host $banner -ForegroundColor Cyan
+    Write-Host "============================================================" -ForegroundColor DarkGray
+    Write-Host "  GitHub: github.com/merlini0s/nordvpn-wireguard-generator" -ForegroundColor Gray
     Write-Host "============================================================" -ForegroundColor DarkGray
     Write-Host ""
 }
@@ -87,11 +91,17 @@ function Get-NordVPNCountries {
 function Get-NordVPNServers {
     param(
         [int]$CountryId,
+        [string]$ServerGroup,
         [int]$Limit = 100
     )
     
     $baseUrl = "https://api.nordvpn.com/v1/servers/recommendations"
     $params = "filters[servers_technologies][identifier]=wireguard_udp&filters[country_id]=$CountryId&limit=$Limit"
+    
+    # Add server group filter if specified
+    if ($ServerGroup -and $ServerGroup -ne "all") {
+        $params += "&filters[servers_groups][identifier]=$ServerGroup"
+    }
     
     $url = "$baseUrl`?$params"
     
@@ -105,15 +115,42 @@ function Get-NordVPNServers {
     }
 }
 
+function Show-ServerTypeMenu {
+    Write-Host ""
+    Write-Host "Available server types:" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "  1. Standard VPN      - Regular VPN servers for everyday use" -ForegroundColor White
+    Write-Host "  2. P2P               - Optimized for torrenting & file sharing" -ForegroundColor White
+    Write-Host "  3. Double VPN        - Route through 2 servers for extra security" -ForegroundColor White
+    Write-Host "  4. Onion Over VPN    - Access Tor network through VPN" -ForegroundColor White
+    Write-Host "  5. Dedicated IP      - Servers with dedicated IP addresses" -ForegroundColor White
+    Write-Host "  6. Obfuscated        - Bypass VPN restrictions & firewalls" -ForegroundColor White
+    Write-Host "  7. All Types         - Show all available WireGuard servers" -ForegroundColor White
+    Write-Host ""
+    
+    $serverTypes = @(
+        @{ Name = "Standard VPN"; Identifier = "legacy_standard"; Description = "Regular browsing" },
+        @{ Name = "P2P"; Identifier = "legacy_p2p"; Description = "Torrenting" },
+        @{ Name = "Double VPN"; Identifier = "legacy_double_vpn"; Description = "Extra security" },
+        @{ Name = "Onion Over VPN"; Identifier = "legacy_onion_over_vpn"; Description = "Tor access" },
+        @{ Name = "Dedicated IP"; Identifier = "legacy_dedicated_ip"; Description = "Static IP" },
+        @{ Name = "Obfuscated"; Identifier = "legacy_obfuscated_servers"; Description = "Bypass restrictions" },
+        @{ Name = "All Types"; Identifier = "all"; Description = "All servers" }
+    )
+    
+    return $serverTypes
+}
+
 function Show-ServerList {
     param(
         [array]$Servers,
-        [string]$CountryName
+        [string]$CountryName,
+        [string]$ServerTypeName
     )
     
     Write-Host ""
     Write-Host "============================================================" -ForegroundColor Cyan
-    Write-Host " Available WireGuard Servers in $CountryName" -ForegroundColor Cyan
+    Write-Host " $ServerTypeName Servers in $CountryName" -ForegroundColor Cyan
     Write-Host " Sorted by load (lowest = best performance)" -ForegroundColor Gray
     Write-Host "============================================================" -ForegroundColor Cyan
     Write-Host ""
@@ -159,7 +196,8 @@ function New-WireGuardConfig {
     param(
         [string]$PrivateKey,
         [object]$Server,
-        [string]$DNS
+        [string]$DNS,
+        [string]$ServerType
     )
     
     $hostname = $Server.hostname
@@ -186,6 +224,7 @@ function New-WireGuardConfig {
 # NordVPN WireGuard Configuration
 # ============================================
 # Server   : $hostname
+# Type     : $ServerType
 # Location : $city, $country
 # Load     : $load%
 # IP       : $serverIP
@@ -205,13 +244,14 @@ PersistentKeepalive = 25
 "@
     
     return @{
-        Config    = $config
-        Hostname  = $hostname
-        City      = $city
-        Country   = $country
-        Load      = $load
-        ServerIP  = $serverIP
-        PublicKey = $publicKey
+        Config     = $config
+        Hostname   = $hostname
+        City       = $city
+        Country    = $country
+        Load       = $load
+        ServerIP   = $serverIP
+        PublicKey  = $publicKey
+        ServerType = $ServerType
     }
 }
 
@@ -300,9 +340,37 @@ if (-not $privateKey) {
 
 Write-Host "[OK] Private key retrieved successfully!" -ForegroundColor Green
 
-# ==================== STEP 3: Country Selection ====================
+# ==================== STEP 3: Server Type Selection ====================
 Write-Host ""
-Write-Host "[STEP 3] Select Country" -ForegroundColor Green
+Write-Host "[STEP 3] Select Server Type" -ForegroundColor Green
+Write-Host "------------------------------------------------------------" -ForegroundColor DarkGray
+
+$serverTypes = Show-ServerTypeMenu
+Write-Host ""
+$typeInput = Read-Host "Select server type [1]"
+
+$selectedType = $null
+if ([string]::IsNullOrWhiteSpace($typeInput) -or $typeInput -eq "1") {
+    $selectedType = $serverTypes[0]  # Default to Standard
+}
+elseif ($typeInput -match '^\d+$') {
+    $num = [int]$typeInput
+    if ($num -ge 1 -and $num -le $serverTypes.Count) {
+        $selectedType = $serverTypes[$num - 1]
+    }
+}
+
+if (-not $selectedType) {
+    Write-Host "[WARNING] Invalid selection. Using Standard VPN." -ForegroundColor Yellow
+    $selectedType = $serverTypes[0]
+}
+
+Write-Host ""
+Write-Host "[OK] Selected: $($selectedType.Name)" -ForegroundColor Cyan
+
+# ==================== STEP 4: Country Selection ====================
+Write-Host ""
+Write-Host "[STEP 4] Select Country" -ForegroundColor Green
 Write-Host "------------------------------------------------------------" -ForegroundColor DarkGray
 
 $countries = Get-NordVPNCountries
@@ -337,18 +405,30 @@ if (-not $selectedCountry) {
 Write-Host ""
 Write-Host "[OK] Selected: $($selectedCountry.name)" -ForegroundColor Cyan
 
-# ==================== STEP 4: Fetch & Display Servers ====================
+# ==================== STEP 5: Fetch & Display Servers ====================
 Write-Host ""
-Write-Host "[STEP 4] Fetching Available Servers" -ForegroundColor Green
+Write-Host "[STEP 5] Fetching Available Servers" -ForegroundColor Green
 Write-Host "------------------------------------------------------------" -ForegroundColor DarkGray
 Write-Host ""
-Write-Host "Fetching WireGuard servers from $($selectedCountry.name)..." -ForegroundColor Gray
+Write-Host "Fetching $($selectedType.Name) servers from $($selectedCountry.name)..." -ForegroundColor Gray
 
-$servers = Get-NordVPNServers -CountryId $selectedCountry.id -Limit 50
+$servers = Get-NordVPNServers -CountryId $selectedCountry.id -ServerGroup $selectedType.Identifier -Limit 50
 
 if (-not $servers -or $servers.Count -eq 0) {
-    Write-Host "[ERROR] No WireGuard servers found in $($selectedCountry.name)." -ForegroundColor Red
-    exit 1
+    Write-Host ""
+    Write-Host "[WARNING] No $($selectedType.Name) servers found in $($selectedCountry.name)." -ForegroundColor Yellow
+    Write-Host ""
+    $fallback = Read-Host "Would you like to show all server types instead? (Y/n)"
+    
+    if ($fallback -ne "n" -and $fallback -ne "N") {
+        $servers = Get-NordVPNServers -CountryId $selectedCountry.id -ServerGroup "all" -Limit 50
+        $selectedType = @{ Name = "All Types"; Identifier = "all"; Description = "All servers" }
+    }
+    
+    if (-not $servers -or $servers.Count -eq 0) {
+        Write-Host "[ERROR] No WireGuard servers found. Exiting." -ForegroundColor Red
+        exit 1
+    }
 }
 
 # Sort by load (lowest first)
@@ -357,10 +437,10 @@ $servers = $servers | Sort-Object load
 Write-Host "[OK] Found $($servers.Count) servers" -ForegroundColor Green
 
 # Display server list
-Show-ServerList -Servers $servers -CountryName $selectedCountry.name
+Show-ServerList -Servers $servers -CountryName $selectedCountry.name -ServerTypeName $selectedType.Name
 
-# ==================== STEP 5: Server Selection ====================
-Write-Host "[STEP 5] Select Servers" -ForegroundColor Green
+# ==================== STEP 6: Server Selection ====================
+Write-Host "[STEP 6] Select Servers" -ForegroundColor Green
 Write-Host "------------------------------------------------------------" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "Options:" -ForegroundColor Yellow
@@ -411,9 +491,9 @@ else {
     Write-Host "[OK] Selected $($selectedServers.Count) server(s)" -ForegroundColor Cyan
 }
 
-# ==================== STEP 6: DNS Selection ====================
+# ==================== STEP 7: DNS Selection ====================
 Write-Host ""
-Write-Host "[STEP 6] Select DNS Servers" -ForegroundColor Green
+Write-Host "[STEP 7] Select DNS Servers" -ForegroundColor Green
 Write-Host "------------------------------------------------------------" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "  1. NordVPN DNS      (103.86.96.100, 103.86.99.100) - Recommended"
@@ -438,13 +518,14 @@ $dns = switch ($dnsChoice) {
 Write-Host ""
 Write-Host "[OK] DNS: $dns" -ForegroundColor Cyan
 
-# ==================== STEP 7: Generate Configurations ====================
+# ==================== STEP 8: Generate Configurations ====================
 Write-Host ""
-Write-Host "[STEP 7] Generating Configuration Files" -ForegroundColor Green
+Write-Host "[STEP 8] Generating Configuration Files" -ForegroundColor Green
 Write-Host "------------------------------------------------------------" -ForegroundColor DarkGray
 Write-Host ""
 
-# Create output directory
+# Create output directory with server type in name
+$typeFolder = $selectedType.Name -replace '\s+', '_'
 $outputDir = Join-Path -Path $PWD -ChildPath "NordVPN-WireGuard-Configs"
 if (-not (Test-Path $outputDir)) {
     New-Item -ItemType Directory -Path $outputDir -Force | Out-Null
@@ -453,10 +534,19 @@ if (-not (Test-Path $outputDir)) {
 $generatedFiles = @()
 
 foreach ($server in $selectedServers) {
-    $result = New-WireGuardConfig -PrivateKey $privateKey -Server $server -DNS $dns
+    $result = New-WireGuardConfig -PrivateKey $privateKey -Server $server -DNS $dns -ServerType $selectedType.Name
     
-    # Create safe filename
-    $safeName = "$($result.Country)-$($result.City)-$($result.Hostname)" `
+    # Create safe filename with server type prefix
+    $typePrefix = switch ($selectedType.Identifier) {
+        "legacy_p2p" { "P2P" }
+        "legacy_double_vpn" { "DoubleVPN" }
+        "legacy_onion_over_vpn" { "Onion" }
+        "legacy_dedicated_ip" { "DedicatedIP" }
+        "legacy_obfuscated_servers" { "Obfuscated" }
+        default { "Standard" }
+    }
+    
+    $safeName = "$typePrefix-$($result.Country)-$($result.City)-$($result.Hostname)" `
         -replace '\s+', '_' `
         -replace '[^\w\.\-]', ''
     $fileName = "$safeName.conf"
@@ -466,11 +556,12 @@ foreach ($server in $selectedServers) {
     $result.Config | Out-File -FilePath $filePath -Encoding UTF8 -Force
     
     $generatedFiles += @{
-        FileName = $fileName
-        Hostname = $result.Hostname
-        City     = $result.City
-        Country  = $result.Country
-        Load     = $result.Load
+        FileName   = $fileName
+        Hostname   = $result.Hostname
+        City       = $result.City
+        Country    = $result.Country
+        Load       = $result.Load
+        ServerType = $result.ServerType
     }
     
     Write-Host "  [+] " -ForegroundColor Green -NoNewline
@@ -483,6 +574,11 @@ Write-Host ""
 Write-Host "============================================================" -ForegroundColor Green
 Write-Host "             CONFIGURATION GENERATION COMPLETE!             " -ForegroundColor Green
 Write-Host "============================================================" -ForegroundColor Green
+Write-Host ""
+Write-Host "Server Type: " -NoNewline -ForegroundColor Yellow
+Write-Host "$($selectedType.Name)" -ForegroundColor White
+Write-Host "Country: " -NoNewline -ForegroundColor Yellow
+Write-Host "$($selectedCountry.name)" -ForegroundColor White
 Write-Host ""
 Write-Host "Output Directory:" -ForegroundColor Yellow
 Write-Host "  $outputDir" -ForegroundColor Cyan
@@ -504,6 +600,24 @@ Write-Host "  Allowed IPs        : 0.0.0.0/0, ::/0" -ForegroundColor White
 Write-Host "  Keepalive          : 25 seconds" -ForegroundColor White
 Write-Host "------------------------------------------------------------" -ForegroundColor DarkGray
 Write-Host ""
+
+# Server type specific tips
+if ($selectedType.Identifier -eq "legacy_p2p") {
+    Write-Host "[TIP] P2P servers are optimized for torrenting. Make sure your" -ForegroundColor Cyan
+    Write-Host "      torrent client is configured to use the VPN connection." -ForegroundColor Cyan
+    Write-Host ""
+}
+elseif ($selectedType.Identifier -eq "legacy_double_vpn") {
+    Write-Host "[TIP] Double VPN routes traffic through 2 servers for extra" -ForegroundColor Cyan
+    Write-Host "      security. Expect slightly slower speeds." -ForegroundColor Cyan
+    Write-Host ""
+}
+elseif ($selectedType.Identifier -eq "legacy_obfuscated_servers") {
+    Write-Host "[TIP] Obfuscated servers help bypass VPN blocks and firewalls." -ForegroundColor Cyan
+    Write-Host "      Useful in restrictive networks." -ForegroundColor Cyan
+    Write-Host ""
+}
+
 Write-Host "[!] SECURITY: Keep your .conf files private!" -ForegroundColor Yellow
 Write-Host ""
 

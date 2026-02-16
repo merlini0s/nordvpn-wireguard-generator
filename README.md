@@ -18,6 +18,7 @@ NordVPN doesn't officially provide WireGuard configuration files. Their **NordLy
 
 ## ✨ Features
 
+- ✅ **Server type selection** - Standard, P2P, Double VPN, Obfuscated, and more
 - ✅ **Interactive country selection** - Choose from popular presets or enter any country code
 - ✅ **Server list with real-time metrics** - View all servers sorted by load
 - ✅ **Color-coded load indicator** - Quickly identify best performing servers
@@ -25,12 +26,39 @@ NordVPN doesn't officially provide WireGuard configuration files. Their **NordLy
 - ✅ **Multiple DNS options** - NordVPN, Cloudflare, Google, Quad9, or custom
 - ✅ **No dependencies** - Uses only built-in PowerShell
 
+## 🖥️ Server Types
+
+| Type | Best For |
+|------|----------|
+| **Standard VPN** | Everyday browsing, streaming, general use |
+| **P2P** | Torrenting, file sharing, peer-to-peer applications |
+| **Double VPN** | Maximum security (routes through 2 servers) |
+| **Onion Over VPN** | Accessing Tor network through VPN |
+| **Dedicated IP** | Static IP address for consistent access |
+| **Obfuscated** | Bypassing VPN blocks, firewalls, and restrictions |
+
 ## 📸 Screenshots
 
-### Server Selection with Load Metrics
+### Server Type Selection
+```
+Available server types:
+
+  1. Standard VPN      - Regular VPN servers for everyday use
+  2. P2P               - Optimized for torrenting & file sharing
+  3. Double VPN        - Route through 2 servers for extra security
+  4. Onion Over VPN    - Access Tor network through VPN
+  5. Dedicated IP      - Servers with dedicated IP addresses
+  6. Obfuscated        - Bypass VPN restrictions & firewalls
+  7. All Types         - Show all available WireGuard servers
+
+Select server type [1]: 2
+[OK] Selected: P2P
+```
+
+### Server List with Load Metrics
 ```
 ============================================================
- Available WireGuard Servers in United States
+ P2P Servers in United States
  Sorted by load (lowest = best performance)
 ============================================================
 
@@ -85,19 +113,20 @@ cd nordvpn-wireguard-generator
 ### Step-by-Step Flow
 
 1. **Enter your access token**
-2. **Select a country** - Choose from popular options or enter any country code (e.g., `US`, `GR`, `NL`)
-3. **View server list** - See all available servers sorted by load with color-coded metrics
-4. **Select servers** - Multiple options:
+2. **Select server type** - Standard, P2P, Double VPN, etc.
+3. **Select a country** - Choose from popular options or enter any country code
+4. **View server list** - See all available servers sorted by load with color-coded metrics
+5. **Select servers** - Multiple options:
    - `1,3,5` - Pick specific servers by number
    - `best 5` - Auto-select top 5 lowest-load servers  
    - `all` - Generate configs for all servers
    - Press **Enter** - Default to top 3 best servers
-5. **Choose DNS** - Select from preset options or enter custom DNS
-6. **Done!** - Configuration files are saved to `NordVPN-WireGuard-Configs` folder
+6. **Choose DNS** - Select from preset options or enter custom DNS
+7. **Done!** - Configuration files are saved to `NordVPN-WireGuard-Configs` folder
 
 ### Command Line Mode
 ```powershell
-# Provide token directly (still interactive for server selection)
+# Provide token directly (still interactive for other selections)
 .\NordVPN-WireGuard-Generator.ps1 -Token "your_token_here"
 ```
 
@@ -107,9 +136,9 @@ The script creates a `NordVPN-WireGuard-Configs` folder containing `.conf` files
 
 ```
 NordVPN-WireGuard-Configs/
-├── United_States-New_York-us9432.nordvpn.com.conf
-├── United_States-Los_Angeles-us8821.nordvpn.com.conf
-└── United_States-Chicago-us7623.nordvpn.com.conf
+├── P2P-United_States-New_York-us9432.nordvpn.com.conf
+├── P2P-United_States-Los_Angeles-us8821.nordvpn.com.conf
+└── P2P-United_States-Chicago-us7623.nordvpn.com.conf
 ```
 
 ### Example Configuration File
@@ -118,6 +147,7 @@ NordVPN-WireGuard-Configs/
 # NordVPN WireGuard Configuration
 # ============================================
 # Server   : us9432.nordvpn.com
+# Type     : P2P
 # Location : New York, United States
 # Load     : 8%
 # IP       : 192.145.32.45
@@ -170,6 +200,23 @@ When viewing the server list, loads are color-coded for quick identification:
 | 🟡 Yellow | 31-60% | Medium load - Good performance |
 | 🔴 Red | 61%+ | High load - May be slower |
 
+## 💡 Tips by Server Type
+
+### P2P Servers
+- Optimized for torrenting and file sharing
+- Configure your torrent client to use the VPN interface
+- Best for large file downloads
+
+### Double VPN
+- Traffic routes through 2 servers for extra encryption
+- Expect slightly slower speeds due to double routing
+- Ideal for maximum privacy needs
+
+### Obfuscated Servers
+- Helps bypass VPN blocks and deep packet inspection
+- Useful in restrictive networks (schools, workplaces, countries with VPN restrictions)
+- May have slightly higher latency
+
 ## 🔐 Security Notes
 
 - ⚠️ **Keep your `.conf` files private** - they contain your private key
@@ -183,9 +230,10 @@ When viewing the server list, loads are color-coded for quick identification:
 - Generate a new token from [NordVPN dashboard](https://my.nordaccount.com/dashboard/nordvpn/manual-configuration/)
 - Ensure the token has "Get service credentials" permission
 
-### "No WireGuard servers found"
-- Try a different country
-- Some locations may have limited WireGuard support
+### "No servers found for this type"
+- Not all server types are available in all countries
+- Try selecting "All Types" or choose a different country
+- P2P and Standard are available in most locations
 
 ### Execution Policy Error
 ```powershell
@@ -201,10 +249,10 @@ powershell -ExecutionPolicy Bypass -File .\NordVPN-WireGuard-Generator.ps1
 ## 📚 Related Resources
 
 - [NordVPN Manual Configuration](https://my.nordaccount.com/dashboard/nordvpn/manual-configuration/)
+- [NordVPN Server Types Explained](https://nordvpn.com/features/specialty-servers/)
 - [WireGuard Official Site](https://www.wireguard.com/)
 - [OpenWrt WireGuard Setup](https://openwrt.org/docs/guide-user/services/vpn/wireguard/client)
 - [OPNsense WireGuard Setup](https://docs.opnsense.org/manual/how-tos/wireguard-client.html)
-- [Ubiquiti WireGuard Setup](https://help.ui.com/hc/en-us/articles/115005090007)
 
 ## 🤝 Contributing
 
